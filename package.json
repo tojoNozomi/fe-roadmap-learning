@@ -1,0 +1,27 @@
+{
+  "name": "fe-roadmap-learning",
+  "version": "1.0.0",
+  "description": "A roadmap of FE I thought",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tojoNozomi/fe-roadmap-learning"
+  },
+  "keywords": [
+    "Front-End",
+    "JavaScript",
+    "roadmap",
+    "FE"
+  ],
+  "maintainers": [
+    {
+      "name": "Kakigoori",
+      "email": "nozomi1049@gmail.com"
+    }
+  ],
+  "author": "Kakigoori",
+  "license": "ISC"
+}
