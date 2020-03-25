@@ -164,3 +164,157 @@ Util.error('514')
 
 webpack里面可以使用`import()` 和`require.ensure()`来实现代码分割
 
+
+
+### 类型系统
+
+##### 注解
+
+比如下面的代码使用了变量、函数参数、函数返回值的类型注解
+
+```typescript
+// 基本类型的注解，有number string boolean等
+const num: number = 123
+function foo(num: number): number {
+  return num
+}
+```
+
+
+
+而数组也可以使用注解，如
+
+```typescript
+let arr: boolean[];
+arr = [true, false]
+```
+
+
+
+还有个概念是接口，它能将多个类型注解合并成一个类型注解，如
+
+```typescript
+// 看起来像是针对对象用的
+interface Name {
+  first: string;
+  last: string
+}
+let name: Name
+name = {
+  first: 'kooji'，
+  last: 'tadokoro'
+}
+```
+
+
+
+与接口注解不太一样，可以使用内联类型注解。
+
+对于出现次数不多的情况可以使用这种方式去注解；如果多次出现的话还是选择接口注解会好一些
+
+```typescript
+let name: {
+  first: string;
+  last: string
+}
+name = {
+  first: 'kooji',
+  last: 'tadokoro'
+}
+```
+
+
+
+除了基础类型之外，TS还提供了特殊类型，如： `null` 、 `undefined`、 `void`、  `any`
+
+1. any
+
+   可以用于兼容所有类型，相当于把类型检查关闭。在迁移JS代码到TS的时候会非常方便，但应该尽量减少使用这种类型。
+
+2. null 和 undefined
+
+   这两种类型的字面量可以被赋值给任意类型的变量
+
+3. void
+
+   用来表示一个函数没有返回值，如
+
+   ```typescript
+   function foo(msg: string): void {
+     console.log(msg)
+   }
+   ```
+
+
+
+和其他强类型语言一样，TS中有泛型的概念。不少数据结构和算法不会依赖于对象的实际类型，但是你依旧想对每个变量进行约束。如接受一个数组并进行反转，这里的约束就介于传入函数和函数的返回值之间
+
+```typescript
+function reverse<T>(items: T[]): T[] {
+	let result = []
+	for (let i = items.length - 1; i >= 0; i--) {
+    result.push(items[i])
+  }
+  return result
+}
+
+const arr = [1,2,3]
+const result = reverse(arr)
+console.log(result) // 3, 2, 1
+
+result[0] = '1' // 报错
+result[1] = 2 // 正确
+```
+
+也就是说，当传入元素为number的数组，返回的数组的元素也都为number，这种情况下的类型是安全的。经过这样的函数输出的值是不能在变更类型的
+
+当希望属性是多种类型之一时，可以使用联合类型注解，即使用 `|` 作为类型注解，例如一个字符串格式化的函数：
+
+```typescript
+function foo(msg: string[] | string): string {
+  let result = ''
+  if (typeof msg === 'string') {
+    result = msg.trim()
+  } else {
+    result = msg.join(' ').trim()
+  }
+  return result
+}
+```
+
+在JS中会经常用到extends这种模式。在这种模式下，可以根据两个对象来创建一个新的对象，新对象会拥有两个对象所有的功能。在TS里你可以使用交叉类型来安全地使用这种模式，如：
+
+```typescript
+function extend<T, U>(first: T, second: U): T & U {
+  const result = <T & U>{}
+  for (let id in first) {
+    (<T> result)[id] = first[id]
+  }
+  for (let id in second) {
+    if (!result.hasOwnProperty(id)) {
+      (<U>result)[id] = second[id]
+    }
+  }
+  return result
+}
+const x = extend({a: 114}, {b: '514'})
+console.log(x) // {a: 114, b: '514'}
+```
+
+元组类型（略）
+
+为了方便注解的使用，可以使用类型别名来表示注解，如：
+
+```typescript
+type StrOrNum = string | number
+let a: StrOrNum
+a = 114
+a = '514'
+
+// 可以为任意的类型注解提供类型别名，这是一些实例
+type Text = string | {text: string}
+type Coordinates = [number, number]
+type Callback = (data: string) => void
+```
+
+需要注意的是，如果类型注解有层次结构的话，应该使用`interface`。它能使用`implement` 和 `extends`。
