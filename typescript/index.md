@@ -318,3 +318,543 @@ type Callback = (data: string) => void
 ```
 
 需要注意的是，如果类型注解有层次结构的话，应该使用`interface`。它能使用`implement` 和 `extends`。
+
+##### 从JS迁移到TS
+
+主要步骤：
+
+> * 添加一个tsconfig.json的文件
+> * 将文件扩展名从`.js` 改成 `.ts`，开始使用any来减少错误
+> * 开始使用TS写代码，尽量减少`any`的使用
+> * 回到旧代码，开始添加类型注解，并修复已识别的错误
+> * 为第三方JS代码定义环境声明
+
+减少错误
+
+刚开始迁移的时候，TS会进行类型检查，这样会出现大量的类型错误，可以使用类型断言来减少此类错误。可以使用any进行类型断言或者类型注解
+
+第三方JS代码的处理
+
+因为不可能所有的代码都改成TS的，比如一些第三方库类。那么可以使用`vendor.d.ts`文件来作为针对特定库的声明文件。
+
+```typescript
+declare var $: any
+// 或者显式地使用注解、并且在类型声明空间中用到它
+declare type JQuery = any
+declare var $: LQuery
+
+// 引入第三方npm模块的话
+declare module 'jquery'
+// 在使用的时候引入
+import * as $ from 'jquery'
+
+// 引入非js资源
+declare module '*.css'
+// 这样就可以使用下面的语句来引入css了
+import * as foo from './foo.css'
+```
+
+
+
+##### @types
+
+可以通过安装`@types`，来添加声明文件。添加了之后可以直接在支持的编辑器上开启代码类型提示
+
+例如
+
+```bash
+npm install @types/jquery --save-dev
+```
+
+ 默认情况下TS会自动包含支持全局使用的任何定义。而通常情况下还是推荐使用模块。在安装了模块`@types`后，不需要进行特别的配置就能直接像使用模块那样使用
+
+另外在`tsconfig.json`中能对编译选项的types选项配置有意义的类型作为全局定义。
+
+
+
+##### 环境声明
+
+可以通过`declare`关键字来告知TS你试图表述一个已在其他地方存在的代码
+
+```typescript
+declare var foo: any
+foo = 123
+```
+
+这些声明可以放在`.ts`或者`.d.ts`文件中（推荐放在独立的`.d.ts`文件中）。
+
+带有`.d.ts`的文件中每个根级别的声明都必须以`declare`关键字作为前缀，这里的代码就不会被TS编译成其他代码，而且开发者需要确保所声明的内容在编译的时候存在。
+
+有些全局变量已经有社区维护的`.d.ts`文件，你并不需要重复进行声明，建议使用接口。接口允许其他人扩充这些全局变量，并且告诉TS有关这些变量的修改。
+
+```typescript
+// 添加一个函数到process里的例子
+interface Process {
+	exitWithLogging(code?: number): void;
+}
+process.exitWithLogging = function() {
+  console.log('exiting')
+  process.exit.apply(process, arguments)
+}
+```
+
+
+
+##### 接口
+
+接口在很多情况下和内联注解是等效的声明。接口方便在可以轻松地添加成员到现有的声明中。
+
+TS接口是开放式的，它允许你使用接口来模仿JS的可扩展性。
+
+使用类来实现接口吧
+
+```typescript
+interface Point {
+  x: number;
+  y: number;
+}
+class MyPoint implements Point {
+  x: number;
+  y: number;
+}
+```
+
+在`implements`存在的情况下，外部接口的任何更改都会导致代码编译报错，所以可以确保两者的同步。也就是说接口会限制类实例的结构。
+
+接口旨在声明JS中可能存在的任意结构。
+
+
+
+##### 枚举
+
+```typescript
+// 枚举类型的例子
+enum CardSuit {
+  Clubs,
+  Diamonds,
+  Hearts,
+  Spades
+}
+let Card = CardSuit.Clubs
+Card = '123' // 报错，string类型的数据不能赋值给CardSuit类型
+```
+
+上面这些枚举类型的值都是数字类型的，因此称为数字枚举。
+
+```typescript
+enum Color {
+  Red = 1, // 1
+  Green,   // 2
+  Blue     // 3
+}
+```
+
+
+
+枚举中默认从0开始（通常建议从1进行初始化，这样能让你在枚举类型值中安全可靠地检查）
+
+枚举有一个很好的用途就是用来作为标记。可以用来检查一组条件中的某个条件是否为真。
+
+```typescript
+// 比如一个权限的表，可以参考Linux中的文件权限
+enum Perssion = {
+	None = 0,
+  Read = 1 << 0,
+  Write = 1 << 1,
+  Exec = 1 << 2
+}
+// 通过左移的位运算符，得到这些数字 001, 010, 100（对应1，2，4）
+// 当使用枚举标记的时候，位运算符将带来很大的帮助(|或 &与 ~非)
+// 使用 |= 添加一个标记
+// 组合使用 &= 和 ~ 来清除一个标记
+// 使用 | 来合并标记
+```
+
+
+
+而枚举类型不止数字枚举，还有字符串枚举、常量枚举。
+
+
+
+##### lib.d.ts
+
+当安装TS的时候，会顺带安装一个`lib.d.ts`的声明文件。这个文件包含了JS运行时以及DOM中存在的各种常见的JS环境声明。
+
+这个文件会自动包含在TS项目的编译上下文中，能让你快速开始书写经过类型检查的JS代码。
+
+编译目标的更改会导致声明文件中包含更多的环境声明。
+
+想要解耦编译目标和环境库支持之间的关系的话，可以使用`--lib` `--target`选项或者使用`tsconfig.json`中`compilerOptions` 的`lib`选项和`target`选项。如果需要使用polyfill的话可以引入`core-js`包来支持
+
+
+
+##### 函数
+
+比如下面的函数有着参数注解、返回值注解（这个是可选的，不写的话可以根据编译器来推断）
+
+```typescript
+function foo (sampleParam: {bar: number}): number {
+  return sampleParam.bar
+}
+```
+
+可选参数、参数默认值：
+
+```typescript
+// 使用? 可以标记为可选出参数
+function foo (bar: number, bas?: string): void {
+  console.log(bar, bas)
+}
+// 也可以给参数设置默认值
+function foo (bar: number, bas: string = 'bas') {
+  console.log(bar, bas)
+}
+```
+
+TS的函数支持重载（略）
+
+
+
+声明函数
+
+```typescript
+type Foo = {
+  (a: number): number;
+}
+type Bar = (a: number) => number
+```
+
+ 这里的两种写法是等效的，但是想要使用函数重载的话只能使用第一种方式。
+
+
+
+你可以使用类型别名或者接口来表示一个可以被调用的类型注解
+
+```typescript
+interface ReturnString {
+  (): string
+}
+declare cosnt foo: ReturnString
+const bar = foo() // bar会被推断为字符串
+
+// 一个相对复杂的可被调用的类型注解
+interface Com {
+  (foo: string, bar?: number, ...others: boolean[]): number
+}
+```
+
+箭头函数的注解
+
+```typescript
+const simple: (foo: number) => string = foo => foo.toString()
+```
+
+可实例化的例子
+
+```typescript
+interface Bar {
+  new (): string
+}
+// 用例
+declare const Foo: Bar
+const boo = new Foo() // boo会被推断为string类型
+```
+
+
+
+##### 类型断言
+
+```typescript
+interface Foo {
+  a: number;
+  b: string;
+}
+const foo = {} as Foo
+foo.a = 1
+foo.b = 'b'
+
+const bar = {}
+bar.a = 1 //  报错，因为bar被推断为{}，不能为它添加属性a或b
+bar.b = 'b' // 报错
+```
+
+使用类型断言可以规避上面的报错。不过使用断言之后，如果忘了某个属性，编译的时候不会报错，需要规避这种情况。
+
+这个时候可能需要创建一个临时变量来通过类型推断的检查。
+
+双重断言，例如 
+
+```typescript
+function handle(event: Event) {
+  const el = (event as any) as HTMLElement
+}
+```
+
+TS如何确定单个断言是否足够
+
+基本上，当S类型是T类型的子集，或者T类型是S类型的子集时，S能够被成功断言成T。这也是为了在进行类型断言时的安全性而考虑的，毫无根据的断言是危险的，如果你想这么做，可以使用any。
+
+##### Freshness
+
+这是用于方便检查对象的字面量类型，确保对象字面量在结构上类型兼容。
+
+例如，React中就很好地使用了Freshness。这可能需要给所有成员都标记为可选，这样就能捕获到拼写错误了。
+
+```typescript
+interface State {
+  foo?: string;
+  bar?: string;
+}
+this.setState({foo: 'abc'}) // 可以通过类型检查
+this.setState({foos: 'abc'}) // 报错，对象只能指定已知的属性
+this.setState({foo: 123}) // 报错，不能将number类型赋值给string类型
+```
+
+
+
+##### 类型保护
+
+typeof 使用了这个关键字之后，TS会自动推断类型是否符合，以及是否拼写错误
+
+instanceof 一个判断实例是否来自一个类。
+
+in 安全地检查一个对象上是否存在一个属性
+
+也可以使用`==` `===` `!==` `!=` 这些来区分字面量类型
+
+自定义类型保护
+
+```typescript
+interface Foo {
+  foo: number;
+  common: string;
+}
+interface Bar {
+  bar: number;
+  common: string;
+}
+// 用户自定义的类型保护
+function isFoo(arg: Foo | Bar): arg is Foo {
+  return (arg as Foo).foo !== undefined
+}
+// 用例
+function doStuff(arg: Foo | Bar) {
+  if (isFoo(arg)) {
+    console.log(arg.foo) // 正确
+    console.log(arg.bar) // 错误
+  } else {
+    console.log(arg.foo) // 错误
+    console.log(arg.bar) // 正确
+  }
+}
+
+```
+
+
+
+类型保护和回调函数
+
+TS不能假设类型保护在回调中一直有效的，所有这么假设是危险的。
+
+可以使用临时变量将推断的安全值存放起来，防止被外部更改。
+
+```typescript
+declare var foo: {bar?: {baz: string}}
+function immediate(callback: () => void) {
+	callback()
+}
+
+// 类型保护
+if (foo.bar) {
+  console.log(foo.bar.baz) // 正确
+  someFunc(() => {
+    console.log(foo.bar.baz) // TS错误： 对象可能为undefined
+  })
+}
+
+// 类型保护
+if (foo.bar) {
+  console.log(foo.bar.baz) // 正确
+  const bar = foo.bar
+  someFunc(() => {
+    console.log(bar.baz) // 正确
+  })
+}
+
+```
+
+
+
+##### 字面量类型
+
+可以将字符串字面量当作一个类型来使用，虽然不是很实用。
+
+```typescript
+let foo: 'Hello'
+foo = 'bar' //错误： bar不能赋值给Hello类型
+```
+
+
+
+##### readonly
+
+可以在一个接口中使用readonly，能以一种更安全的方式工作
+
+```typescript
+function foo (config: {readonly bar: number, readonly bas: number}) {
+  // ...
+}
+const config = {bar: 1, bas: 2}
+foo(config)
+// 这样能确保config不会再改变了
+
+type Foo = {
+  readonly bar: number;
+  readonly bas: number;
+}
+const foo: Foo = {bar: 1,bas: 2}
+foo.bar = 123 // 错误： foo.bar是只读属性
+```
+
+readonly和const的区别：
+
+前者用于属性，而因为别名的原因，该属性可以被改变
+
+后者用于变量，不能被重新赋值
+
+
+
+##### 泛型
+
+设计泛型的关键动机是在成员之间提供有意义的类型约束，这些成员可以是类的实例成员、类的方法、函数的参数、函数返回值
+
+假设JS实现了一个队列，可以传入和弹出任何类型的数据。想要限制出入的数据的类型的话，可以创建一个特殊类用来约束。但是这么做的话需要不少成本来修改原有的代码。
+
+而使用泛型的话，可以很简单地完成这件事。
+
+```typescript
+class QueueNumber {
+  private data = []
+  push = (item: number) => this.data.push(item)
+  pop = (): number => this.data.shift()
+}
+const queue = new QueueNumber()
+queue.push(1) 
+queue.push('1') // 报错，不能放入string类型的数据
+
+// 使用泛型
+class Queue<T> {
+  private data: T[] = []
+  push = (item: T) => this.data.push(item)
+  pop = (): T | undefinded => this.data.shift()
+}
+// usage
+const queue = new Queue<number>()
+queue.push(0)
+queue.push('1') // 报错，不能放入string类型的数据，只能放入number类型的
+```
+
+
+
+设计模式
+
+```typescript
+declare function parse<T>(name: string): T
+// 等同于下面的类型断言
+declare function parse(name: string): any
+const sth = parse('sth') as TypeOfSth
+```
+
+仅使用一次的泛型并没有类型断言安全。
+
+再来一个例子
+
+```typescript
+const getJSON = <T>(config: {url: string; headers?:{[key: string]: strimg}}): Promise<T> => {
+  const fetchConfig = {
+    method: 'GET',
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    ...(config.headers || {})
+  }
+  return fetch(config.url, fetchConfig).then<T>(response.json())
+}
+
+type LoadUserResponse = {
+  user: {
+    name: string;
+    email: string;
+  }[];
+}
+function loaderUser() {
+  return getJSON<LoadUserResponse>({url: 'http://example.com/users'})
+}
+```
+
+使用`Promise<T>`相比`Promise<any>`要好就是前后是匹配的。
+
+另外泛型可以被用于函数参数
+
+```typescript
+declare function send<T>(arg: T): void
+send<stm>({
+  x: 123,
+  // 能自动补全
+})
+```
+
+
+
+##### 类型推断
+
+TS可以根据一些简单的规则来推断（然后检查）变量的类型。
+
+* 定义变量
+
+  定义两个不同类型的变量之后，将其中一个赋值给另外一个变量时会报错
+
+* 函数返回类型
+
+  自动根据return 返回的数据判断
+
+* 赋值
+
+* 结构化
+
+  用字面量定义了一个对象，其中的属性的类型会自动识别并检查类型
+
+* 解构
+
+  使用解构赋值得到的变量也会识别/检查
+
+
+
+##### 类型兼容性（略）
+
+协变： 只在同一个方向兼容
+
+逆变： 只在相反的方向兼容
+
+双向协变： 双向兼容
+
+不变： 如果类型不同，则不兼容
+
+
+
+##### never
+
+TS需要一个可靠的类型来代表哪些永远不会发生的事情
+
+never类型是TS的底部类型，有这么些例子：
+
+* 一个从来不会有返回值的函数
+* 一个总会抛出错误的函数
+
+你也可以将never作为类型注解，但never类型只能被另外一个never类型赋值。
+
+和void的区别： 当一个函数返回空值，它会返回一个void；但当一个函数根本没有返回值，或者总抛出错误时，它会返回一个never
+
+
+
+##### 联合类型
+
