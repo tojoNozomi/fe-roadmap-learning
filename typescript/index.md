@@ -9,7 +9,6 @@
 > 5. 编译选项
 > 6. 常见错误以及处理方式
 > 7. 工具链
-> 8. 最佳实践（小技巧、代码风格）
 > 9. 编译原理
 
 
@@ -857,4 +856,285 @@ never类型是TS的底部类型，有这么些例子：
 
 
 ##### 联合类型
+
+定义了联合类型之后，作类型检查的时候就以能推断出类型是来自联合类型中的哪一个
+
+```typescript
+interface Square {
+  kind: 'square';
+  size: number;
+}
+interface Rectangle {
+  kind: 'rectangle';
+  width: number;
+  height: number;
+}
+type Shape = Square | Rectangle // 联合类型的定义
+```
+
+
+
+##### 索引签名
+
+使用字符串访问JS中的对象，并保存对其他对象的引用。
+
+当向索引签名传入一个其他对象时JS会先调用`toString`方法
+
+而在TS中，索引签名会限定在number和string类型上（Symbol类型也是可以的），如果要传入对象的话需要显式带上`toString()`，其中有个理由就是默认执行的`toString` 非常糟糕，如V8引擎总是返回`[object Object]`。
+
+
+
+声明一个索引签名可以使用下面的这种结构
+
+```typescript
+const foo: {
+  [index: string]: { message: string };
+}
+foo['a'] = { message: 'abc' } // 正确
+foo['a'] = { messages: 'abc' } // 报错，提示要包含message
+console.log(foo['a'].message) // 正确
+console.log(foo['a'].messages) // 报错，提示messages不存在
+```
+
+上面代码中的index除了提高可读性之外是没有意义的。比如这个数据结构是存储用户名的，可以这么写`[username: string]: {message: string}`
+
+number类型的索引可以这么写：`[const: number]: Type`，这里的Type可以替换成你想要的类型
+
+```typescript
+interface Foo {
+  [key: string]: number;
+  x: number; // 这里的类型只能是number，和上面一致
+  y: number; // 换成其他类型的话会报错
+}
+
+// 使用一组有限的字符串字面量
+type Index = 'a' | 'b' | 'c'
+type FromIndex = {
+  [k in Index]?: number
+}
+const good: FromIndex = {
+  b: 1,
+  c: 2
+}
+const bad: FromIndex = {
+  b: 1,
+  c: 2,
+  d: 3
+} // 错误，对象字面量只能指定已知类型，d并不存在于FromIndex类型上
+```
+
+同时拥有string和number类型的索引签名可以这么定义
+
+```typescript
+interface ArrStr {
+  [key: string]: string | number;
+  [index: number]: string;
+  length: number
+}
+```
+
+
+
+##### 类型移动
+
+如果需要移动一个类，你可能尝试这么做
+
+```typescript
+class Foo {}
+const Bar = Foo
+let bar: Bar //报错： 找不到名称Bar
+```
+
+这里报错是因为const只是把Foo复制到了一个变量声明空间，但并不能当作一个了类型注解使用。正确方式是使用`import`关键字。
+
+```typescript
+namespace importing {
+  export class Foo {}
+}
+ import Bar = importing.Foo
+let bar: Bar // 正确
+```
+
+如果需要捕获一个变量的类型，可以这么做
+
+```typescript
+let foo = 123
+let bar: typeof foo
+bar = 456 // 正确
+bar = '123' // 报错： string不能赋值给number类型
+
+// 捕获类成员的类型
+class Foo {
+  foo: number;
+}
+declare let _foo: Foo
+let bar: typeof _foo.foo
+```
+
+
+
+##### 异常处理
+
+JS中有一个`Error`类，可以通过`throw`关键字来抛出错误，并通过 `try/catch`来捕获错误。
+
+错误子类型
+
+* RangeError 当数字类型的变量或参数超出有效范围时，报的错
+* ReferenceError 引用无效
+* SyntaxError 解析到无效的JS代码（多是语法错误）
+* TypeError 变量或参数不是有效类型
+* URIError `encodeURI()` 或者`decodeURI`传入无效参数
+
+
+
+##### 混合（略）
+
+JS和TS中，类只支持严格的单继承，不能实现多重继承。
+
+
+
+### JSX
+
+在TS里如何使用JSX？
+
+> * 使用后缀为.tsx的文件
+> * 在tsconfig.json中的compilerOption中设置jsx选项为react
+> * 安装依赖 @types/react @types/react-dom
+> * 在tsx文件中导入react： import * as React from 'react'
+
+函数组件的定义
+
+```tsx
+type Props = {
+  foo: string;
+}
+const myCom: React.FunctionComponent<Props> = props => {
+  return <span>{props.foo}</span>
+}
+<MyCom foo="bar" />
+```
+
+类组件的定义
+
+```tsx
+type Props = {
+  foo: string;
+}
+class MyCom extends React.Component<Props, {}> {
+  render() {
+    return <span>{this.props.foo}</span>
+  }
+}
+<MyCom foo="bar" />
+```
+
+React类型声明文件中提供了`React.ReactElement<T>`，可以通过你传入的`<T />`，来注解类组件的实例化结果
+
+```tsx
+// 使用了上面的组件
+const foo: React.ReactElement<MyCom> = <MyCom />
+```
+
+泛型组件
+
+```tsx
+// 一个泛型组件
+type SelectProps<T> = { item: T[] }
+class Select<T> extends React.Component<selectProps<T>, any> {}
+
+// 用例
+const Form = () => <Select<string> items={['a', 'b']} />
+```
+
+泛型函数
+
+```tsx
+function foo<T>(x: T): T {
+  return x
+}
+// 并不能直接使用箭头函数
+// 这里报错了，提醒T标签没闭合
+const foo = <T>(x: T) => T        
+```
+
+想要使用的话用extends来提示编译器这是个泛型
+
+```tsx
+const foo = <T extends {}>(x: T) => x
+```
+
+
+
+### TS编译选项
+
+`noImplicitAny`用于标记出无法被推断的类型（未指明类型而且无法推断的话就报错），开启后不会被自动标为any
+
+
+
+`strictNullChecks` 开启后会区别出null和undefined，两者不能互相赋值
+
+
+
+### TS错误处理
+
+常见的错误
+
+* TS2304 Cannot find xxx  未声明
+* TS2307 Cannot find module 'xxx' 把第三方库当作模块使用了，并且缺少对应的环境声明文件
+* TS1148
+* 捕获不能有类型注解的变量。 需要使用类型保护
+
+
+
+### 开发&测试工具
+
+在Jest中使用TS
+
+> * 安装Jest包
+> * 安装@types/jest
+> * 安装TS预处理器ts-jest。这能让Jest动态转化成TS，并添加内置的source-map
+> * 写入devDependencies
+
+配置Jest
+
+```javascript
+module.exports = {
+  'roots': [
+    '<rootDir>/src' // 指定目录
+  ],
+  'transform': {
+    '^. + \\.tsx?$': 'ts-jest' // 告知Jest使用ts-jest来处理ts/tsx文件
+  }
+}
+```
+
+运行测试
+
+``` sh
+# 运行观察模式
+npm test --watch
+# 普通运行
+npm test
+```
+
+使用Jest的理由
+
+* 内置断言库
+* 强大的TS支持
+* 可靠的测试观察模式
+* 快照测试
+* 内置覆盖率报告
+* 内置async/await支持
+
+
+
+Prettier 代码格式化工具
+
+Husky 防止错误提交、推送以及其他问题。也可以配合Prettier使用
+
+ESlint 也可以用于TS
+
+
+
+### 编译原理（略）
 
