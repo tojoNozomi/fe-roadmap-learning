@@ -253,3 +253,48 @@ const router = new VueRouter({
 })
 ```
 
+
+
+### 路由懒加载
+
+[route lazy load](https://github.com/vuejs/vue-router/blob/8975db3659401ef5831ebf2eae5558f2bf3075e1/docs/zh-cn/advanced/lazy-loading.md)
+
+如果直接打包构建应用，那么会导致构建产物中JS文件硕大无比，导致页面加载慢。如果能按照不同路由对应的组件进行分割，只有在路由被访问到时才加载对应的组件，那么体验会更好，效率就更高了。
+
+可以结合Vue的异步组件和Webpack的代码分割功能，实现路由组件的懒加载。
+
+首先定义一个异步组件，返回一个Promise的工厂函数（这个promise会resolve组件本身）
+
+```javascript
+const Foo = () => Promise.resolve({/*组件定义对象*/})
+```
+
+接着在Webpack中，使用动态import语法来定义代码分块点（split point）
+
+```javascript
+import('./Foo.vue')
+```
+
+如果使用的是Babel，则要添加`syntax-dynamic-import`来正确识别这个语法。
+
+最后就在router.js中，定义路由配置
+
+```javascript
+const Foo = () => import('./Foo.vue')
+// 路由配置则和其他时候写法一样，没有变化
+const router = new VueRouter({
+  routes:[{
+    path: '/foo',
+    component: Foo
+  }]
+})
+```
+
+当需要把某个路由下的所有组件都打包到同一个异步块的时候，可以使用`命名chunk`，一个特殊的注释语法来提供chunk name
+
+```javascript
+const Foo = () => import(/* webpackChunkName: "group-foo" */ './Foo.vue')
+const Bar = () => import(/* webpackChunkName: "group-foo" */ './Bar.vue')
+const Baz = () => import(/* webpackChunkName: "group-foo" */ './Baz.vue')
+```
+
