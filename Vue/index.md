@@ -298,3 +298,58 @@ const Bar = () => import(/* webpackChunkName: "group-foo" */ './Bar.vue')
 const Baz = () => import(/* webpackChunkName: "group-foo" */ './Baz.vue')
 ```
 
+
+
+
+
+### Vue常用技巧
+
+##### 路由组件参数解耦
+
+
+
+##### 函数式组件
+
+
+
+##### 样式穿透
+
+
+
+##### $watch的高阶使用
+
+
+
+##### 事件参数
+
+
+
+##### 自定义组件的双向绑定
+
+
+
+##### 事件监听器
+
+
+
+##### 手动挂载组件
+
+
+
+##### Vuex
+
+* action可以异步，而mutation只能进行同步操作
+* 开启严格模式： 在创建store时加入`strict: true`的选项
+* state快照的设置： 深拷贝+添加webpack插件
+
+
+
+##### element-ui二次开发
+
+* 使用element-theme工具，编辑生成的变量文件即可修改样式
+
+* 需要深层次定制时候，进入node_modules/theme_default/src 下面修改源码（因为et工具通过这个npm包里面的源码进行编译）
+
+* element-theme源码是使用css4
+
+* https://github.com/Molunerfinn/theme-default 二次开发指南
