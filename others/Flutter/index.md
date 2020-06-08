@@ -24,7 +24,7 @@ Text： 文字，可以配置样式，不可以换行
 
 Expanded： 扩展，类似于Flex中的设置（自动占满）
 
-MediaQuery.of(content).size.width： 获取当前内容的实际宽度，值为double，可以运算
+`MediaQuery.of(content).size.width`： 获取当前内容的实际宽度，值为double，可以运算
 
 
 
@@ -42,10 +42,21 @@ MediaQuery.of(content).size.width： 获取当前内容的实际宽度，值为d
 
 ```dart
 List<Widget> = []; // 泛型。List中元素限制为Widget类型。
+// 使用dynamic类型的情况下，则不限定数据类型
+Map<String, dynamic> = {
+    'param1': 123,
+    'param2': 'abc'
+};
 
 @override
 function funcName() {} // 函数重写，用于继承后函数的改写
+
+String str = '${content}'; // 模板字符串
+
+
 ```
+
+
 
 路由： Navigation中提供了路由栈，根据push pop操作
 
