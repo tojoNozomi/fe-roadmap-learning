@@ -56,9 +56,19 @@ String str = '${content}'; // 模板字符串
 
 ```
 
-
+### 其他
 
 路由： Navigation中提供了路由栈，根据push pop操作
+
+模块：需要使用其他模块的代码时，可以直接
+
+```dart
+import "./module.dart";
+```
+
+无需显式`export`。
+
+
 
 
 
